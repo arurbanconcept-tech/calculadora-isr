@@ -63,16 +63,21 @@ export default function Step2_Costs({ datos, onChange, errores, onNext, onBack }
 
   return (
     <div className="space-y-6">
-      <h2 className="section-title">Paso 2 — Costos de adquisición</h2>
+      <div>
+        <h2 className="section-title">Paso 2 — Costos de adquisición</h2>
+        <p className="text-xs text-muted">
+          Entre más deducciones tengas documentadas, menor será tu ISR.
+        </p>
+      </div>
 
       <div className="card space-y-5">
-        {/* Costo de adquisición total */}
+        {/* Costo de adquisición */}
         <AmountInput
           label="💵 ¿Cuánto pagaste cuando compraste el inmueble?"
           value={datos.costoAdquisicion}
           onChange={v => onChange('costoAdquisicion', v)}
-          placeholder="1,500,000"
-          tooltip="El precio que pagaste al comprar, según la escritura de compraventa. Este costo se actualizará con el INPC para calcular tu ganancia real."
+          placeholder={esCasa ? '1,500,000' : '800,000'}
+          tooltip="El precio que pagaste al comprar según la escritura de compraventa. Se actualiza con el INPC para calcular tu ganancia real."
         />
         {errores?.costoAdquisicion && <p className="error-text">{errores.costoAdquisicion}</p>}
 
@@ -96,7 +101,7 @@ export default function Step2_Costs({ datos, onChange, errores, onNext, onBack }
               <label htmlFor="separaTerreno" className="text-sm font-medium cursor-pointer">
                 🏗️ ¿Puedes separar el costo en terreno y construcción?
               </label>
-              <Tooltip texto="Si tienes la escritura detallada o un avalúo que separa valores, ingresa los montos. Si no, usaremos la regla supletoria del SAT: 20% terreno / 80% construcción. El terreno no se deprecia; la construcción sí (3% anual)." />
+              <Tooltip texto="Si tienes la escritura detallada, ingresa los montos por separado. Si no, usaremos 20% terreno / 80% construcción. La construcción se deprecia 3% anual; el terreno no." />
             </div>
 
             {separaTerreno ? (
@@ -116,46 +121,51 @@ export default function Step2_Costs({ datos, onChange, errores, onNext, onBack }
                 {datos.costoTerreno && datos.costoConstruccion && datos.costoAdquisicion &&
                  (Number(datos.costoTerreno) + Number(datos.costoConstruccion)) !== Number(datos.costoAdquisicion) && (
                   <p className="col-span-2 text-xs text-amber-600">
-                    ⚠️ La suma (${(Number(datos.costoTerreno) + Number(datos.costoConstruccion)).toLocaleString('es-MX')})
-                    {' '}no coincide con el costo total (${Number(datos.costoAdquisicion).toLocaleString('es-MX')}).
+                    ⚠️ La suma no coincide con el costo total.
                   </p>
                 )}
               </div>
             ) : (
               <div className="pl-6 py-2 bg-bg rounded-sm text-xs text-muted">
-                Se usará la regla supletoria: <strong>20% terreno</strong> / <strong>80% construcción</strong>
+                Se usará: <strong>20% terreno</strong> / <strong>80% construcción</strong>
               </div>
             )}
           </div>
         )}
 
-        {/* Mejoras (solo casa) */}
-        {esCasa && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                type="checkbox"
-                id="tieneMejoras"
-                className="h-4 w-4 accent-primary cursor-pointer"
-                checked={tieneMejoras}
-                onChange={e => {
-                  setTieneMejoras(e.target.checked);
-                  if (!e.target.checked) {
-                    onChange('costoMejoras', 0);
-                    onChange('fechaMejoras', null);
-                  }
-                }}
-              />
-              <label htmlFor="tieneMejoras" className="text-sm font-medium cursor-pointer">
-                🔨 ¿Realizaste mejoras al inmueble con facturas (CFDI)?
-              </label>
-              <Tooltip texto="Solo se pueden deducir mejoras o remodelaciones respaldadas con facturas electrónicas (CFDI). Las mejoras aumentan el costo fiscal y reducen tu impuesto. Fundamento: Art. 121 fr. II LISR." />
-            </div>
+        {/* Mejoras con facturas — aplica para TODOS los tipos */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="checkbox"
+              id="tieneMejoras"
+              className="h-4 w-4 accent-primary cursor-pointer"
+              checked={tieneMejoras}
+              onChange={e => {
+                setTieneMejoras(e.target.checked);
+                if (!e.target.checked) {
+                  onChange('costoMejoras', 0);
+                  onChange('fechaMejoras', null);
+                }
+              }}
+            />
+            <label htmlFor="tieneMejoras" className="text-sm font-medium cursor-pointer">
+              🧾 ¿Tienes facturas (CFDI) de mejoras o construcción?
+            </label>
+            <Tooltip texto={esCasa
+              ? "Remodelaciones, ampliaciones, o mejoras al inmueble respaldadas con facturas electrónicas CFDI. Estas REDUCEN tu impuesto porque aumentan el costo fiscal. Art. 121 fr. II LISR."
+              : "Para terrenos: construcciones, bardas, obras de urbanización o cualquier mejora con CFDI. Se actualizan con INPC y reducen tu ganancia gravable. Art. 121 fr. II LISR."
+            } />
+          </div>
 
-            {tieneMejoras && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
+          {tieneMejoras && (
+            <div className="space-y-4 pl-6">
+              <div className="bg-green-50 border border-green-200 rounded-sm p-3 text-xs text-green-700">
+                💡 <strong>Cada peso de mejora documentada reduce tu ISR.</strong> Incluye todas las facturas que tengas: remodelaciones, ampliaciones, instalaciones, bardas, pavimentación, etc.
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <AmountInput
-                  label="Costo total de mejoras"
+                  label="Total de mejoras con factura"
                   value={datos.costoMejoras}
                   onChange={v => onChange('costoMejoras', v)}
                   placeholder="200,000"
@@ -164,12 +174,41 @@ export default function Step2_Costs({ datos, onChange, errores, onNext, onBack }
                   label="Fecha aproximada de las mejoras"
                   value={datos.fechaMejoras}
                   onChange={v => onChange('fechaMejoras', v)}
-                  tooltip="El mes y año en que se realizaron las mejoras. Si fueron en distintas fechas, usa una fecha promedio."
+                  tooltip="Si las mejoras fueron en distintas fechas, usa una fecha promedio. Entre más antiguas, mayor será el factor de actualización."
                 />
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tips para reducir ISR */}
+      <div className="bg-primary/5 border border-primary/10 rounded-md p-4">
+        <p className="text-sm font-semibold text-primary mb-3">💡 ¿Cómo puedes reducir tu ISR?</p>
+        <div className="space-y-2 text-xs text-muted">
+          <div className="flex items-start gap-2">
+            <span className="text-success font-bold shrink-0">↓</span>
+            <span><strong>Mejoras con CFDI</strong> — Cada factura de remodelación o construcción aumenta tu costo fiscal y baja tu ganancia gravable.</span>
           </div>
-        )}
+          <div className="flex items-start gap-2">
+            <span className="text-success font-bold shrink-0">↓</span>
+            <span><strong>Gastos notariales</strong> — Los honorarios del notario al comprar (con factura) son deducibles y se actualizan con inflación.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-success font-bold shrink-0">↓</span>
+            <span><strong>Comisión inmobiliaria</strong> — Si pagaste comisión con CFDI, es 100% deducible.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-success font-bold shrink-0">↓</span>
+            <span><strong>Factor INPC</strong> — La inflación acumulada actualiza tu costo de compra automáticamente. Entre más tiempo tuviste el inmueble, mayor el factor.</span>
+          </div>
+          {esCasa && (
+            <div className="flex items-start gap-2">
+              <span className="text-success font-bold shrink-0">↓</span>
+              <span><strong>Exención casa habitación</strong> — Si cumples los 3 requisitos del Paso 1, hasta ~$5.8M de tu ganancia está exenta de ISR.</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-3">

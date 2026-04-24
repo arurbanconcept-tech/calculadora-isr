@@ -264,10 +264,10 @@ export function calcularISRCompleto(datos) {
   costoAdquisicionActualizado = aplicarCostoMinimo(costoAdquisicionActualizado, precioVenta);
   const aplicoCostoMinimo = costoAdquisicionActualizado > costoSinMinimo;
 
-  // ── Paso 3: Mejoras actualizadas ──────────────────────────────────────────
+  // ── Paso 3: Mejoras actualizadas (aplica para casa Y terreno) ────────────
   let mejorasActualizadas = 0;
   let factorMejoras = 1;
-  if (tipoInmueble === 'casa' && costoMejoras > 0) {
+  if (costoMejoras > 0) {
     const mesMejoras = fechaMejoras || fechaAdquisicion;
     mejorasActualizadas = actualizarDeduccion(costoMejoras, mesMejoras, fechaVenta);
     try { factorMejoras = calcularFactorActualizacion(mesMejoras, fechaVenta); } catch { /**/ }
