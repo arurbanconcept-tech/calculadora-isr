@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { MESES_NOMBRES } from '../utils/formatters.js';
 import { ANIO_MINIMO } from '../utils/inpcData.js';
 import ExemptionChecker from './ExemptionChecker.jsx';
@@ -8,12 +9,27 @@ import { CONFIG } from '../constants/config.js';
 const ANIO_ACTUAL = new Date().getFullYear();
 
 function MonthYearPicker({ label, value, onChange, tooltip, error, maxYear }) {
-  const [mes, anio] = value ? value.split('-') : ['', ''];
+  // Formato guardado: "YYYY-MM" → split[0]=anio, split[1]=mes
+  const parts = value ? value.split('-') : ['', ''];
+  const [localAnio, setLocalAnio] = useState(parts[0] || '');
+  const [localMes, setLocalMes] = useState(parts[1] || '');
 
-  const handleChange = (campo, val) => {
-    const newMes = campo === 'mes' ? val : mes;
-    const newAnio = campo === 'anio' ? val : anio;
-    if (newMes && newAnio) onChange(`${newAnio}-${newMes}`);
+  // Sincronizar cuando el padre cambia el valor externamente (ej: cargar ejemplo)
+  useEffect(() => {
+    const p = value ? value.split('-') : ['', ''];
+    setLocalAnio(p[0] || '');
+    setLocalMes(p[1] || '');
+  }, [value]);
+
+  const handleMes = (val) => {
+    setLocalMes(val);
+    if (val && localAnio) onChange(`${localAnio}-${val}`);
+    else onChange('');
+  };
+
+  const handleAnio = (val) => {
+    setLocalAnio(val);
+    if (localMes && val) onChange(`${val}-${localMes}`);
     else onChange('');
   };
 
@@ -29,8 +45,8 @@ function MonthYearPicker({ label, value, onChange, tooltip, error, maxYear }) {
       <div className="flex gap-2">
         <select
           className="input-field flex-1"
-          value={mes || ''}
-          onChange={e => handleChange('mes', e.target.value)}
+          value={localMes}
+          onChange={e => handleMes(e.target.value)}
         >
           <option value="">Mes</option>
           {MESES_NOMBRES.map((m, i) => (
@@ -39,11 +55,11 @@ function MonthYearPicker({ label, value, onChange, tooltip, error, maxYear }) {
         </select>
         <select
           className="input-field w-28"
-          value={anio || ''}
-          onChange={e => handleChange('anio', e.target.value)}
+          value={localAnio}
+          onChange={e => handleAnio(e.target.value)}
         >
           <option value="">Año</option>
-          {anios.map(a => <option key={a} value={a}>{a}</option>)}
+          {anios.map(a => <option key={a} value={String(a)}>{a}</option>)}
         </select>
       </div>
       {error && <p className="error-text">{error}</p>}
