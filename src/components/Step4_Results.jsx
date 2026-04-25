@@ -1,112 +1,159 @@
-import { RotateCcw, Printer, TrendingDown, CheckCircle, Zap, DollarSign, Home, Trees, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { RotateCcw, Printer, TrendingDown, CheckCircle, DollarSign, Home, Trees, AlertTriangle, Share2, Copy, Check } from 'lucide-react';
 import { formatCurrency, formatMesAnio } from '../utils/formatters.js';
 import FormulaBreakdown from './FormulaBreakdown.jsx';
 import DisclaimerBanner from './DisclaimerBanner.jsx';
 import { CONFIG } from '../constants/config.js';
 
-function ResultCard({ resultado }) {
-  const cards = {
-    perdida: {
-      icon: TrendingDown,
-      color: 'bg-blue-50 border-blue-200',
-      iconColor: 'text-blue-600',
-      badge: 'bg-blue-100 text-blue-700',
-      titulo: '📉 Pérdida fiscal',
-      subtitulo: 'No hay ISR a pagar',
-      descripcion: 'Vendiste el inmueble por menos de lo que costó (considerando inflación y deducciones). Puedes reportar esta pérdida en tu declaración anual (Art. 122 LISR).',
-      isrLabel: 'ISR estimado',
-      isrValor: '$0',
-    },
-    exento: {
-      icon: CheckCircle,
-      color: 'bg-green-50 border-green-200',
-      iconColor: 'text-success',
-      badge: 'bg-green-100 text-green-700',
-      titulo: '✅ ¡Posiblemente exento!',
-      subtitulo: 'ISR = $0 (sujeto a verificación del Notario)',
-      descripcion: `La venta podría estar exenta de ISR por estar dentro del límite de 700,000 UDIS (${formatCurrency(CONFIG.LIMITE_EXENCION_PESOS)}). El Notario confirmará los requisitos formales.`,
-      isrLabel: 'ISR estimado',
-      isrValor: '$0',
-    },
-    gravado: null,
+function ShareButton() {
+  const [copied, setCopied] = useState(false);
+  const url = window.location.href;
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Calculadora ISR Inmobiliaria',
+          text: 'Calcula el impuesto que pagarás al vender tu inmueble en México',
+          url,
+        });
+        return;
+      } catch (_) {}
+    }
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  if (resultado.resultado === 'gravado') {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-6">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-red-100 rounded-sm">
-            <DollarSign size={28} className="text-danger" />
-          </div>
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="bg-red-100 text-danger text-xs font-semibold px-2 py-0.5 rounded-full">
-                ISR ESTIMADO
-              </span>
-            </div>
-            <h2 className="font-display text-3xl font-bold text-danger mb-1">
-              {formatCurrency(resultado.pagoProvisionalNotario)}
-            </h2>
-            <p className="text-sm text-red-700 mb-4">Pago provisional estimado a retener por el Notario</p>
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      className="btn-secondary text-xs py-2 px-3 no-print"
+    >
+      {copied ? <Check size={14} className="text-success" /> : <Share2 size={14} />}
+      {copied ? 'Link copiado' : 'Compartir'}
+    </button>
+  );
+}
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-white/70 rounded-sm p-3 border border-red-100">
-                <p className="text-xs text-muted mb-1">ISR Federal (Art. 126)</p>
-                <p className="font-bold text-text">{formatCurrency(resultado.isrFederalEstimado)}</p>
-              </div>
-              <div className="bg-white/70 rounded-sm p-3 border border-red-100">
-                <p className="text-xs text-muted mb-1">ISR Estatal 5% (Art. 127)</p>
-                <p className="font-bold text-text">{formatCurrency(resultado.isrEstatalEstimado)}</p>
-              </div>
-              <div className="bg-white/70 rounded-sm p-3 border border-red-100">
-                <p className="text-xs text-muted mb-1">Ganancia gravable</p>
-                <p className="font-bold text-text">{formatCurrency(resultado.gananciaGravada)}</p>
-              </div>
-              <div className="bg-white/70 rounded-sm p-3 border border-red-100">
-                <p className="text-xs text-muted mb-1">Años de tenencia</p>
-                <p className="font-bold text-text">{resultado.aniosTenencia} años</p>
-              </div>
-            </div>
+function ResultCard({ resultado }) {
+  if (resultado.resultado === 'gravado') {
+    const neto = resultado.precioVenta - resultado.pagoProvisionalNotario;
+
+    return (
+      <div className="space-y-3">
+        {/* Hero — ISR a pagar */}
+        <div className="bg-danger border-2 border-danger rounded-md p-6 text-center text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-2">
+            Impuesto a pagar al vender
+          </p>
+          <p className="font-display text-6xl font-bold mb-2 leading-none">
+            {formatCurrency(resultado.pagoProvisionalNotario)}
+          </p>
+          <p className="text-sm opacity-80">
+            Pago provisional retenido por el Notario (Art. 126 LISR)
+          </p>
+        </div>
+
+        {/* Precio → ISR → Neto */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white border border-border rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">Precio de venta</p>
+            <p className="font-bold text-sm">{formatCurrency(resultado.precioVenta)}</p>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">ISR estimado</p>
+            <p className="font-bold text-sm text-danger">−{formatCurrency(resultado.pagoProvisionalNotario)}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">Lo que recibes</p>
+            <p className="font-bold text-sm text-success">{formatCurrency(neto)}</p>
+          </div>
+        </div>
+
+        {/* Detalle */}
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="bg-white border border-border rounded-sm p-3">
+            <p className="text-xs text-muted mb-1">ISR Federal (Art. 126)</p>
+            <p className="font-bold">{formatCurrency(resultado.isrFederalEstimado)}</p>
+          </div>
+          <div className="bg-white border border-border rounded-sm p-3">
+            <p className="text-xs text-muted mb-1">ISR Estatal 5% (Art. 127)</p>
+            <p className="font-bold">{formatCurrency(resultado.isrEstatalEstimado)}</p>
+          </div>
+          <div className="bg-white border border-border rounded-sm p-3">
+            <p className="text-xs text-muted mb-1">Ganancia gravable</p>
+            <p className="font-bold">{formatCurrency(resultado.gananciaGravada)}</p>
+          </div>
+          <div className="bg-white border border-border rounded-sm p-3">
+            <p className="text-xs text-muted mb-1">Años de tenencia</p>
+            <p className="font-bold">{resultado.aniosTenencia} años</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const card = cards[resultado.resultado];
-  if (!card) return null;
-  const Icon = card.icon;
-
-  return (
-    <div className={`border rounded-md p-6 ${card.color}`}>
-      <div className="flex items-start gap-4">
-        <div className="p-3 bg-white/60 rounded-sm">
-          <Icon size={28} className={card.iconColor} />
+  if (resultado.resultado === 'exento') {
+    return (
+      <div className="space-y-3">
+        <div className="bg-success border-2 border-success rounded-md p-6 text-center text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-2">
+            ¡Posiblemente exento de ISR!
+          </p>
+          <p className="font-display text-6xl font-bold mb-2 leading-none">$0</p>
+          <p className="text-sm opacity-80">
+            Dentro del límite de 700,000 UDIS — el Notario confirmará los requisitos
+          </p>
         </div>
-        <div className="flex-1">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${card.badge} mb-2 inline-block`}>
-            {card.isrLabel}: {card.isrValor}
-          </span>
-          <h2 className="font-display text-2xl font-bold text-primary mb-1">{card.titulo}</h2>
-          <p className="text-sm text-primary font-medium mb-2">{card.subtitulo}</p>
-          <p className="text-xs text-muted leading-relaxed">{card.descripcion}</p>
-
-          {resultado.gananciaTotal && (
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-white/70 rounded-sm p-2 border border-white">
-                <p className="text-muted">Precio de venta</p>
-                <p className="font-bold">{formatCurrency(resultado.precioVenta)}</p>
-              </div>
-              <div className="bg-white/70 rounded-sm p-2 border border-white">
-                <p className="text-muted">Ganancia contable</p>
-                <p className="font-bold">{formatCurrency(resultado.gananciaTotal)}</p>
-              </div>
-            </div>
-          )}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white border border-border rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">Precio de venta</p>
+            <p className="font-bold text-sm">{formatCurrency(resultado.precioVenta)}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">ISR estimado</p>
+            <p className="font-bold text-sm text-success">$0</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-sm p-3 text-center">
+            <p className="text-xs text-muted mb-1">Lo que recibes</p>
+            <p className="font-bold text-sm text-success">{formatCurrency(resultado.precioVenta)}</p>
+          </div>
+        </div>
+        <div className="bg-green-50 border border-green-200 rounded-sm p-4 text-sm text-green-800">
+          <p className="font-semibold mb-1">✅ ¿Por qué aplica la exención?</p>
+          <p className="text-xs">
+            Tu ganancia está dentro del límite de {formatCurrency(CONFIG.LIMITE_EXENCION_PESOS)} (700,000 UDIS × ${CONFIG.VALOR_UDI_HOY} valor UDI).
+            Declaraste ser casa habitación, sin casos previos en los últimos 3 años y puedes acreditar domicilio.
+          </p>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (resultado.resultado === 'perdida') {
+    return (
+      <div className="space-y-3">
+        <div className="bg-blue-600 border-2 border-blue-600 rounded-md p-6 text-center text-white">
+          <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-2">
+            Pérdida fiscal — sin ISR
+          </p>
+          <p className="font-display text-6xl font-bold mb-2 leading-none">$0</p>
+          <p className="text-sm opacity-80">
+            Vendiste por menos de lo que costó (considerando inflación y deducciones)
+          </p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-sm p-4 text-sm text-blue-800">
+          <p className="text-xs">
+            Puedes reportar esta pérdida en tu declaración anual para compensarla con otras ganancias (Art. 122 LISR).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function ResumenOperacion({ datos, resultado }) {
@@ -189,15 +236,16 @@ export default function Step4_Results({ resultado, datos, onReset }) {
       <div className="flex items-center justify-between no-print">
         <h2 className="section-title">Resultado estimado</h2>
         <div className="flex gap-2">
+          <ShareButton />
           <button
             type="button"
             onClick={() => window.print()}
-            className="btn-secondary text-xs py-2 px-3"
+            className="btn-secondary text-xs py-2 px-3 no-print"
           >
             <Printer size={14} /> Imprimir
           </button>
-          <button type="button" onClick={onReset} className="btn-secondary text-xs py-2 px-3">
-            <RotateCcw size={14} /> Nuevo cálculo
+          <button type="button" onClick={onReset} className="btn-secondary text-xs py-2 px-3 no-print">
+            <RotateCcw size={14} /> Nuevo
           </button>
         </div>
       </div>
@@ -211,7 +259,7 @@ export default function Step4_Results({ resultado, datos, onReset }) {
       {/* Desglose paso a paso */}
       <FormulaBreakdown resultado={resultado} datos={datos} />
 
-      {/* Disclaimer completo */}
+      {/* Disclaimer */}
       <DisclaimerBanner />
 
       <button type="button" onClick={onReset} className="btn-secondary w-full no-print">
